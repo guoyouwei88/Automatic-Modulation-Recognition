@@ -155,9 +155,9 @@ for snr in snrs:
 # Save results to a pickle file for plotting later
 print acc
 fd = open('results_cnn2_d0.5.dat','wb')
+pickle.dump( ("CNN2", 0.5, acc) , fd )
 # Plot accuracy curve
 plt.plot(snrs, map(lambda x: acc[x], snrs))
 plt.xlabel("Signal to Noise Ratio")
 plt.ylabel("Classification Accuracy")
 plt.title("CNN2 Classification Accuracy on RadioML 2016.10 Alpha")
-cPickle.dump( ("CNN2", 0.5, acc) , fd )
