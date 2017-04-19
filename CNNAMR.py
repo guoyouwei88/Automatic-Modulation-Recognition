@@ -1,14 +1,10 @@
-# Import all the things we need
-# by setting env variables before Keras import you can set up which backend and which GPU it use
-# %matplotlib inline
+# Import all the things we need ---
+#   by setting env variables before Keras import you can set up which backend and which GPU it uses
 import os, random
 os.environ["KERAS_BACKEND"] = "theano"
 # os.environ["KERAS_BACKEND"] = "tensorflow"
+# os.environ["THEANO_FLAGS"]  = "device=gpu%d"%(1)
 import numpy as np
-# import theano as th
-# import tensorflow as tf
-# import theano.tensor as th
-from keras.utils import np_utils
 import keras.models as models
 from keras.layers.core import Reshape, Dense, Dropout, Activation, Flatten
 from keras.layers.noise import GaussianNoise
@@ -17,12 +13,12 @@ from keras.regularizers import *
 from keras.optimizers import adam
 import matplotlib.pyplot as plt
 import seaborn as sns
-import cPickle, random, sys, keras
+import pickle, random, sys, keras
 
-# Load the dataset
+# Load the dataset ...
 # You will need to separately download or generate this file
-Xd = cPickle.load(open("RML2016.10a_dict.dat", 'rb'))
-snrs, mods = map(lambda j: sorted(list(set(map(lambda x: x[j],Xd.keys())))), [1, 0])
+Xd = pickle.load(open("RML2016.10a_dict.dat", 'rb'),encoding='bytes')
+snrs, mods = list(map(lambda j: sorted(list(set(map(lambda x: x[j],Xd.keys())))), [1, 0]))
 X = []
 lbl = []
 for mod in mods:
@@ -37,7 +33,7 @@ X = np.vstack(X)
 #   while keeping SNR and Mod labels handy for each
 np.random.seed(2016)
 n_examples = X.shape[0]
-n_train = n_examples * 0.5
+n_train = int(n_examples * 0.5)
 train_idx = np.random.choice(range(0, n_examples), size=n_train, replace=False)
 test_idx = list(set(range(0,n_examples))-set(train_idx))
 X_train = X[train_idx]
@@ -46,8 +42,8 @@ def to_onehot(yy):
     yy1 = np.zeros([len(yy), max(yy)+1])
     yy1[np.arange(len(yy)), yy] = 1
     return yy1
-Y_train = to_onehot(map(lambda x: mods.index(lbl[x][0]), train_idx))
-Y_test = to_onehot(map(lambda x: mods.index(lbl[x][0]), test_idx))
+Y_train = to_onehot(list(map(lambda x: mods.index(lbl[x][0]), train_idx)))
+Y_test = to_onehot(list(map(lambda x: mods.index(lbl[x][0]), test_idx)))
 
 #
 in_shp = list(X_train.shape[1:])
@@ -80,10 +76,10 @@ model.summary()
 
 # Set up some params
 nb_epoch = 100  # number of epochs to train on
-batch_size = 128  # training batch size
+batch_size = 1024  # training batch size
 
-# perform training
-#   - call the main training loop in keras for network+dataset
+# perform training ...
+#   - call the main training loop in keras for our network+dataset
 filepath = 'convmodrecnets_CNN2_0.5.wts.h5'
 history = model.fit(X_train,
                     Y_train,
@@ -108,3 +104,60 @@ plt.title('Training performance')
 plt.plot(history.epoch, history.history['loss'], label='train loss+error')
 plt.plot(history.epoch, history.history['val_loss'], label='val_error')
 plt.legend()
+
+def plot_confusion_matrix(cm, title='Confusion matrix', cmap=plt.cm.Blues, labels=[]):
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(labels))
+    plt.xticks(tick_marks, labels, rotation=45)
+    plt.yticks(tick_marks, labels)
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+# Plot confusion matrix    
+test_Y_hat = model.predict(X_test, batch_size=batch_size)
+conf = np.zeros([len(classes),len(classes)])
+confnorm = np.zeros([len(classes),len(classes)])
+for i in range(0,X_test.shape[0]):
+    j = list(Y_test[i,:]).index(1)
+    k = int(np.argmax(test_Y_hat[i,:]))
+    conf[j,k] = conf[j,k] + 1
+for i in range(0,len(classes)):
+    confnorm[i,:] = conf[i,:] / np.sum(conf[i,:])
+plot_confusion_matrix(confnorm, labels=classes)
+# Plot confusion matrix
+acc = {}
+for snr in snrs:
+
+    # extract classes @ SNR
+    test_SNRs = list(map(lambda x: lbl[x][1], test_idx))
+    test_X_i = X_test[np.where(np.array(test_SNRs)==snr)]
+    test_Y_i = Y_test[np.where(np.array(test_SNRs)==snr)]    
+
+    # estimate classes
+    test_Y_i_hat = model.predict(test_X_i)
+    conf = np.zeros([len(classes),len(classes)])
+    confnorm = np.zeros([len(classes),len(classes)])
+    for i in range(0,test_X_i.shape[0]):
+        j = list(test_Y_i[i,:]).index(1)
+        k = int(np.argmax(test_Y_i_hat[i,:]))
+        conf[j,k] = conf[j,k] + 1
+    for i in range(0,len(classes)):
+        confnorm[i,:] = conf[i,:] / np.sum(conf[i,:])
+    plt.figure()
+    plot_confusion_matrix(confnorm, labels=classes, title="ConvNet Confusion Matrix (SNR=%d)"%(snr))
+    
+    cor = np.sum(np.diag(conf))
+    ncor = np.sum(conf) - cor
+    print "Overall Accuracy: ", cor / (cor+ncor)
+    acc[snr] = 1.0*cor/(cor+ncor)
+# Save results to a pickle file for plotting later
+print acc
+fd = open('results_cnn2_d0.5.dat','wb')
+# Plot accuracy curve
+plt.plot(snrs, map(lambda x: acc[x], snrs))
+plt.xlabel("Signal to Noise Ratio")
+plt.ylabel("Classification Accuracy")
+plt.title("CNN2 Classification Accuracy on RadioML 2016.10 Alpha")
+cPickle.dump( ("CNN2", 0.5, acc) , fd )
