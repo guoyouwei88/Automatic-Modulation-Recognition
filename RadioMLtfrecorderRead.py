@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import tensorflow as tf
-
+import numpy as np
 # In[1]: read training data and testing data from TFrecords
 def read_data(file_queue):
     reader = tf.TFRecordReader()
@@ -37,10 +37,10 @@ def read_data_batch(file_queue, batch_size):
 
 train_data_filename_queue = tf.train.string_input_producer(["D:\PythonScript\AMR\RMLtrainAll.tfrecords"])
 
-train_sigiqs, train_sigaps,train_labels = read_data_batch(train_data_filename_queue, batch_size=100)
+train_sigiqs, train_sigaps,train_labels = read_data_batch(train_data_filename_queue, batch_size=1000)
 
-test_data_filename_queue = tf.train.string_input_producer(tf.train.match_filenames_once("D:\PythonScript\AMR\RMLtestAll.tfrecords"))
-test_sigiqs, test_sigaps,test_labels = read_data_batch(test_data_filename_queue, 100)
+test_data_filename_queue = tf.train.string_input_producer(["D:\PythonScript\AMR\RMLtestAll.tfrecords"])
+test_sigiqs, test_sigaps,test_labels = read_data_batch(test_data_filename_queue, 1000)
     
 with tf.Session() as sess:
     init_op = tf.global_variables_initializer()
@@ -48,9 +48,9 @@ with tf.Session() as sess:
     coord=tf.train.Coordinator()
     threads= tf.train.start_queue_runners(coord=coord)
     for i in range(10):
-        exampleIQ, exampleAP, l = sess.run([train_sigiqs,train_sigaps,train_labels])
-        exampleIQ = np.reshape(exampleIQ,[-1,128,2])
-        exampleAP = np.reshape(exampleAP,[-1,128,2])
-        l = np.reshape(l,[-1,])
+        exampleIQ, exampleAP, l = sess.run([train_sigiqs,train_sigaps,train_labels])#在会话中取出iq/ap/label
+    exampleIQ = np.reshape(exampleIQ,[-1,128,2])
+    exampleAP = np.reshape(exampleAP,[-1,128,2])
+    l = np.reshape(l,[-1,])
     coord.request_stop()
     coord.join(threads)
