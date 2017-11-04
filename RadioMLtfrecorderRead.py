@@ -18,12 +18,12 @@ def read_data(file_queue):
     sig_iq = tf.decode_raw(features['sig_iq'], tf.float64)
     sig_iq = tf.reshape(sig_iq, [-1, 128, 2]) 
     sig_iq = tf.cast(sig_iq, tf.float32)
-    sig_iq = tf.image.resize_images(sig_iq, [128, 2])
+    sig_iq = tf.image.resize_images(sig_iq, [1, 128])
 
     sig_ap = tf.decode_raw(features['sig_ap'], tf.float64)
     sig_ap = tf.reshape(sig_ap, [-1, 128, 2])
     sig_ap = tf.cast(sig_ap, tf.float32)
-    sig_ap = tf.image.resize_images(sig_ap, [128, 2])
+    sig_ap = tf.image.resize_images(sig_ap, [1, 128])
     
     label = tf.cast(features['label'], tf.int32)
     snr = tf.cast(features['snr'], tf.int32)
@@ -48,6 +48,9 @@ with tf.Session() as sess:
     coord=tf.train.Coordinator()
     threads= tf.train.start_queue_runners(coord=coord)
     for i in range(10):
-        exampleIQ, exampleAP, l = sess.run([train_sigiqs,train_sigaps,train_labels])#在会话中取出iq/ap/label
+        exampleIQ, exampleAP, l = sess.run([train_sigiqs,train_sigaps,train_labels])
+        exampleIQ = np.reshape(exampleIQ,[-1,128,2])
+        exampleAP = np.reshape(exampleAP,[-1,128,2])
+        l = np.reshape(l,[-1,])
     coord.request_stop()
     coord.join(threads)
