@@ -35,11 +35,11 @@ def read_data_batch(file_queue, batch_size):
     sig_iq_batch,sig_ap_batch,label_batch= tf.train.batch([sig_iq, sig_ap, label], batch_size=batch_size, capacity=capacity, num_threads=1000)
     return sig_iq_batch,sig_ap_batch,label_batch
 
-train_data_filename_queue = tf.train.string_input_producer(["D:\PythonScript\AMR\RMLtrainAll.tfrecords"])
+train_data_filename_queue = tf.train.string_input_producer('RMLtrainAll.tfrecords')
 
 train_sigiqs, train_sigaps,train_labels = read_data_batch(train_data_filename_queue, batch_size=1000)
 
-test_data_filename_queue = tf.train.string_input_producer(["D:\PythonScript\AMR\RMLtestAll.tfrecords"])
+test_data_filename_queue = tf.train.string_input_producer('RMLtestAll.tfrecords')
 test_sigiqs, test_sigaps,test_labels = read_data_batch(test_data_filename_queue, 1000)
     
 with tf.Session() as sess:
@@ -48,7 +48,7 @@ with tf.Session() as sess:
     coord=tf.train.Coordinator()
     threads= tf.train.start_queue_runners(coord=coord)
     for i in range(10):
-        exampleIQ, exampleAP, l = sess.run([train_sigiqs,train_sigaps,train_labels])#在会话中取出iq/ap/label
+        exampleIQ, exampleAP, l = sess.run([train_sigiqs,train_sigaps,train_labels])
     exampleIQ = np.reshape(exampleIQ,[-1,128,2])
     exampleAP = np.reshape(exampleAP,[-1,128,2])
     l = np.reshape(l,[-1,])
